@@ -7,15 +7,19 @@ import sys
 import copy
 import csv
 
+
 def main():
     cities = loadInCities()
     greedyAlgorithm(cities)
 
+
 def distance(x1, y1, x2, y2):
-	return math.sqrt(((x2-x1)**2)+((y2-y1)**2))
+    return math.sqrt(((x2-x1)**2)+((y2-y1)**2))
+
 
 def distance_between_cities(city_1, city_2):
     return distance(city_1.x, city_1.y, city_2.x, city_2.y)
+
 
 def loadInCities():
     cities = []
@@ -27,7 +31,8 @@ def loadInCities():
             cities.append(city)
             counter += 1
     return cities
-            
+
+
 class City(object):
 
     def __init__(self, x, y):
@@ -50,7 +55,7 @@ def greedyAlgorithm(cities):
         while temp_cities:
             min_distance = sys.maxint
             for counter, city in enumerate(temp_cities):
-                distance = distance_between_cities(last_city, city) 
+                distance = distance_between_cities(last_city, city)
                 if distance < min_distance:
                     min_distance = distance
                     min_city_index = counter
