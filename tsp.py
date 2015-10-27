@@ -7,12 +7,16 @@ import sys
 import copy
 import csv
 import matplotlib.pyplot as plot
+import Queue
+import time
 
 
 def main():
     cities = loadInCities()
-    greedy_tour = greedyAlgorithm(cities)
-    greedy_tour.plot_tour()
+    # greedy_tour = greedy_algorithm(cities)
+    # greedy_tour.plot_tour()
+    uniform_cost_tour = uniform_cost(cities, 10)
+    uniform_cost_tour.plot_tour()
 
 
 def loadInCities():
@@ -27,19 +31,29 @@ def loadInCities():
     return cities
 
 
-def print_tour(tour):
-    for city in tour:
-        print "{0}, {1}".format(city.x, city.y)
-
-
 class Tour(object):
     def __init__(self):
         self._distance = 0.0
         self._tour = []
+        self._complete = False
+
+    def __cmp__(self, other):
+        return cmp(self.get_distance(), other.get_distance())
+
+    def get_distance(self):
+        return self._distance
+
+    def get_tour(self):
+        return self._tour
+
+    def is_complete(self):
+        return self._complete
 
     def add_city(self, city):
         self._tour.append(city)
         self._update_distance()
+        if len(self._tour) > 1 and (self._tour[0] == self._tour[-1]):
+            self._complete = True
 
     def _update_distance(self):
         if len(self._tour) >= 2:
@@ -82,6 +96,15 @@ class City(object):
         self._y = int(y)
         self._index = int(index)
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.get_index() == other.get_index()
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def get_index(self):
         return self._index
 
@@ -92,7 +115,7 @@ class City(object):
         return self._y
 
 
-def greedyAlgorithm(cities):
+def greedy_algorithm(cities):
     starting_cities = copy.deepcopy(cities)
     min_tour = Tour()
     min_tour_distance = sys.maxint
@@ -125,6 +148,36 @@ def greedyAlgorithm(cities):
             min_tour = current_tour
 
     return min_tour
+
+
+def uniform_cost(cities, num_cities=119):
+    start_time = time.time()
+    cities = copy.deepcopy(cities)
+    cities = cities[:num_cities]
+    queue = Queue.PriorityQueue()
+    start_city = cities.pop()
+    start_tour = Tour()
+    start_tour.add_city(start_city)
+    queue.put((start_tour, cities))
+
+    while True:
+        current_tour, remaining_cities = queue.get()
+
+        if len(remaining_cities) == 0:
+            current_tour.add_city(start_city)
+            end_time = time.time()
+            print str(end_time - start_time)
+            return current_tour
+
+        for city in remaining_cities:
+            partial_tour = copy.deepcopy(current_tour)
+            partial_tour.add_city(city)
+
+            temp_remaining_cities = copy.deepcopy(remaining_cities)
+            temp_remaining_cities.remove(city)
+
+            queue.put((partial_tour, temp_remaining_cities))
+
 
 if __name__ == "__main__":
     main()
