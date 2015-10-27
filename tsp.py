@@ -11,7 +11,8 @@ import matplotlib.pyplot as plot
 
 def main():
     cities = loadInCities()
-    greedyAlgorithm(cities)
+    greedy_tour = greedyAlgorithm(cities)
+    greedy_tour.plot_tour()
 
 
 def loadInCities():
@@ -123,8 +124,7 @@ def greedyAlgorithm(cities):
             min_tour_distance = running_total
             min_tour = current_tour
 
-    min_tour.print_tour()
-    min_tour.plot_tour()
+    return min_tour
 
 if __name__ == "__main__":
     main()
