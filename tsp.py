@@ -14,7 +14,7 @@ def main():
     cities = loadInCities()
     # greedy_tour = greedy_algorithm(cities)
     # greedy_tour.plot_tour()
-    for num_cities in range(14, 25):
+    for num_cities in range(3, 20):
         ich_tour = in_class_heuristic(cities, num_cities)
         ich_tour.save_tour("ICH_{0}.pdf".format(num_cities))
         # uniform_cost_tour = uniform_cost(cities, num_cities)
@@ -39,24 +39,17 @@ def loadInCities():
 
 
 class LineSegment(object):
-    def __init__(self, x1, y1, x2, y2):
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
-        self.slope = self.calculate_slope()
-        self._b = None
+    def __init__(self, city1, city2):
+        self.city1 = city1
+        self.city2 = city2
+        self.x1 = city1.x
+        self.y1 = city1.y
+        self.x2 = city2.x
+        self.y2 = city2.y
         self._minx = None
         self._maxx = None
-
-    def calculate_slope(self):
-        return (self.y2 - self.y1) / float(self.x2 - self.x1)
-
-    def get_b(self):
-        if self._b is None:
-            self._b = self.y1 - (self.slope * self.x1)
-
-        return self._b
+        self._miny = None
+        self._maxy = None
 
     def get_min_x(self):
         if self._minx is None:
@@ -69,6 +62,45 @@ class LineSegment(object):
             self._maxx = max(self.x1, self.x2)
 
         return self._maxx
+
+    def get_min_y(self):
+        if self._miny is None:
+            self._miny = min(self.y1, self.y2)
+
+        return self._miny
+
+    def get_max_y(self):
+        if self._maxy is None:
+            self._maxy = max(self.y1, self.y2)
+
+        return self._maxy
+
+    def on_segment(self, city):
+        city_x = city.x
+        city_y = city.y
+        if (city_x <= self.get_max_x() and
+           city_x >= self.get_min_x() and
+           city_y <= self.get_max_y() and
+           city_y >= self.get_min_y()):
+            return True
+        else:
+            return False
+
+    def orientation(self, city):
+        #     (q.y - p.y) * (r.x - q.x) -
+        #     (q.x - p.x) * (r.y - q.y);
+        val = ((city.y - self.y1) * (self.x2 - city.x) -
+               (city.x - self.x1) * (self.y2 - city.y))
+
+        if val > 0:
+            # Clockwise
+            return 1
+        elif val < 0:
+            # Counterclockwise
+            return 2
+        else:
+            # Colinear
+            return 0
 
 
 class Tour(object):
@@ -97,16 +129,18 @@ class Tour(object):
     def get_tour(self):
         return self._tour
 
+    def add_city_and_update(self, city):
+        self._tour.append(city)
+        self.update_distance()
+
     def add_city(self, city):
         self._tour.append(city)
-        self._update_distance()
 
-    def _update_distance(self):
-        if len(self._tour) >= 2:
-            old_last_city = self._tour[-2]
-            new_last_city = self._tour[-1]
-            self._distance += Tour.distance_between_cities(old_last_city,
-                                                           new_last_city)
+    def update_distance(self):
+        old_last_city = self._tour[-2]
+        new_last_city = self._tour[-1]
+        self._distance += Tour.distance_between_cities(old_last_city,
+                                                       new_last_city)
 
     def _get_lines_to_check(self):
         lines_to_check = []
@@ -115,71 +149,48 @@ class Tour(object):
             city_1 = tour[index]
             city_2 = tour[index + 1]
 
-            if (city_1.get_x() == city_2.get_x()):
+            if (city_1.x == city_2.x):
                 # ignore vertical line segment
                 continue
 
-            line = LineSegment(city_1.get_x(),
-                               city_1.get_y(),
-                               city_2.get_x(),
-                               city_2.get_y())
+            line = LineSegment(city_1, city_2)
             lines_to_check.append(line)
 
         return lines_to_check
 
     def has_intersecting_lines(self):
         tour = self.get_tour()
-        if len(tour) < 4:
-            return False
 
         last_city = tour[-1]
         next_to_last_city = tour[-2]
-        new_line = LineSegment(last_city.get_x(),
-                               last_city.get_y(),
-                               next_to_last_city.get_x(),
-                               next_to_last_city.get_y())
+        new_line = LineSegment(last_city, next_to_last_city)
 
         lines_to_check = self._get_lines_to_check()
 
         for old_line in lines_to_check:
-            if (old_line.get_max_x() < new_line.get_min_x()):
-                # Line segment x intervals don't overlap
-                continue
+            o1 = new_line.orientation(old_line.city1)
+            o2 = new_line.orientation(old_line.city2)
+            o3 = old_line.orientation(new_line.city1)
+            o4 = old_line.orientation(new_line.city2)
 
-            # Commented out due to infrequency of occurences
-            # if (old_line.slope == new_line.slope):
-            #     print "Same slope"
-            #     # lines parallel
-            #     continue
-
-            Xa = (new_line.get_b() - old_line.get_b()) / (old_line.slope - new_line.slope)
-
-            if (Xa < max(old_line.get_min_x(), new_line.get_min_x())) or (Xa > min(old_line.get_max_x(), new_line.get_max_x)):
-                # X value of intersection point is outside line segment intervals
-                continue
-
-            Ya1 = old_line.slope * Xa + old_line.get_b()
-            Ya2 = new_line.slope * Xa + new_line.get_b()
-
-            if (Ya1 != Ya2):
-                continue
-
-            if (Ya1 > min(max(new_line.y1, new_line.y2), max(old_line.y1, old_line.y2))):
-                continue
-
-            if (Ya1 < max(min(new_line.y1, new_line.y2), min(old_line.y1, old_line.y2))):
-                continue
-
-            return True
-
+            if (o1 != o2) and (o3 != o4):
+                return True
+            elif (o1 == 0 and new_line.on_segment(old_line.city1)):
+                return True
+            elif (o2 == 0 and new_line.on_segment(old_line.city2)):
+                return True
+            elif (o3 == 0 and old_line.on_segment(new_line.city1)):
+                return True
+            elif (o4 == 0 and old_line.on_segment(new_line.city2)):
+                return True
         return False
 
     @staticmethod
     def distance_between_cities(city_1, city_2):
-        x1 = city_1.get_x()
-        y1 = city_1.get_y()
-        x2 = city_2.get_x()
-        y2 = city_2.get_y()
+        x1 = city_1.x
+        y1 = city_1.y
+        x2 = city_2.x
+        y2 = city_2.y
 
         return math.sqrt(((x2-x1)**2)+((y2-y1)**2))
 
@@ -188,7 +199,7 @@ class Tour(object):
         print "Tour: "
         for city in self._tour:
             # print "{0}, {1}".format(city.x, city.y)
-            print "{0}".format(city.get_index())
+            print "{0}".format(city.index)
 
     def plot_tour(self):
         self._plot_setup()
@@ -198,8 +209,8 @@ class Tour(object):
         cities_x = []
         cities_y = []
         for city in self._tour:
-            cities_x.append(city.get_x())
-            cities_y.append(city.get_y())
+            cities_x.append(city.x)
+            cities_y.append(city.y)
         plot.axis([-5, 105, -5, 105])
         plot.title("Tour Distance: {0}".format(self._distance))
         plot.plot(cities_x, cities_y, marker="o")
@@ -221,27 +232,18 @@ class Tour(object):
 
 class City(object):
     def __init__(self, x, y, index):
-        self._x = int(x)
-        self._y = int(y)
-        self._index = int(index)
+        self.x = int(x)
+        self.y = int(y)
+        self.index = int(index)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self.get_index() == other.get_index()
+            return self.index == other.index
         else:
             return False
 
     def __ne__(self, other):
         return not self.__eq__(other)
-
-    def get_index(self):
-        return self._index
-
-    def get_x(self):
-        return self._x
-
-    def get_y(self):
-        return self._y
 
 
 def greedy_algorithm(cities):
@@ -345,7 +347,7 @@ def in_class_heuristic(cities, num_cities=119):
                                                             total_time)
                 return current_tour
             else:
-                current_tour.add_city(start_city)
+                current_tour.add_city_and_update(start_city)
                 current_tour.set_complete()
                 queue.put((current_tour, remaining_cities))
         else:
@@ -354,13 +356,9 @@ def in_class_heuristic(cities, num_cities=119):
                 partial_tour.add_city(city)
 
                 if partial_tour.has_intersecting_lines():
-                    print "INTERSECTING LINES"
-                    partial_tour.plot_tour()
                     continue
                 else:
-                    if len(partial_tour.get_tour()) > 3:
-                        print "No Intersections"
-                        partial_tour.plot_tour()
+                    partial_tour.update_distance()
                     temp_remaining_cities = list(remaining_cities)
                     temp_remaining_cities.pop(index)
                     queue.put((partial_tour, temp_remaining_cities))
