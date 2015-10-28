@@ -17,9 +17,9 @@ def main():
     # for num_cities in range(16, 20):
     #     ich_tour = in_class_heuristic(cities, num_cities)
     #     ich_tour.save_tour("ICH_{0}.pdf".format(num_cities))
-        # uniform_cost_tour = uniform_cost(cities, num_cities)
-        # uniform_cost_tour.save_tour("uniform_{0}.pdf".format(num_cities))
-        # uniform_cost_tour.print_tour()
+    #     uniform_cost_tour = uniform_cost(cities, num_cities)
+    #     uniform_cost_tour.save_tour("uniform_{0}.pdf".format(num_cities))
+    #     uniform_cost_tour.print_tour()
 
     # uniform_cost_tour = uniform_cost(cities, 2)
     # uniform_cost_tour.save_tour("uniform_{0}.pdf".format(2))
@@ -87,8 +87,6 @@ class LineSegment(object):
             return False
 
     def orientation(self, city):
-        #     (q.y - p.y) * (r.x - q.x) -
-        #     (q.x - p.x) * (r.y - q.y);
         val = ((city.y - self.y1) * (self.x2 - city.x) -
                (city.x - self.x1) * (self.y2 - city.y))
 
@@ -198,7 +196,6 @@ class Tour(object):
         print "Tour Distance: {}".format(self._distance)
         print "Tour: "
         for city in self._tour:
-            # print "{0}, {1}".format(city.x, city.y)
             print "{0}".format(city.index)
 
     def plot_tour(self):
