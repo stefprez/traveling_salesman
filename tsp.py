@@ -12,11 +12,11 @@ import time
 
 def main():
     cities = loadInCities()
-    # greedy_tour = greedy_algorithm(cities)
-    # greedy_tour.plot_tour()
-    for num_cities in range(3, 20):
-        ich_tour = in_class_heuristic(cities, num_cities)
-        ich_tour.save_tour("ICH_{0}.pdf".format(num_cities))
+    greedy_tour = greedy_algorithm(cities)
+    greedy_tour.plot_tour()
+    # for num_cities in range(16, 20):
+    #     ich_tour = in_class_heuristic(cities, num_cities)
+    #     ich_tour.save_tour("ICH_{0}.pdf".format(num_cities))
         # uniform_cost_tour = uniform_cost(cities, num_cities)
         # uniform_cost_tour.save_tour("uniform_{0}.pdf".format(num_cities))
         # uniform_cost_tour.print_tour()
@@ -247,6 +247,7 @@ class City(object):
 
 
 def greedy_algorithm(cities):
+    start_time = time.time()
     starting_cities = copy.deepcopy(cities)
     min_tour = Tour()
     min_tour_distance = sys.maxint
@@ -267,17 +268,20 @@ def greedy_algorithm(cities):
                     min_distance = distance
                     min_city_index = counter
             closest_city = temp_cities.pop(min_city_index)
-            current_tour.add_city(closest_city)
+            current_tour.add_city_and_update(closest_city)
             last_city = closest_city
             running_total += min_distance
             if running_total > min_tour_distance:
                 bad_tour = True
                 break
-        current_tour.add_city(starting_city)
+        current_tour.add_city_and_update(starting_city)
         if (not bad_tour) and (running_total < min_tour_distance):
             min_tour_distance = running_total
             min_tour = current_tour
 
+    end_time = time.time()
+    total_time = end_time - start_time
+    print "Run Time for Greedy Algorithm: {0}".format(total_time)
     return min_tour
 
 
