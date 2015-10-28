@@ -18,7 +18,7 @@ def main():
     for num_cities in range(2, 15):
         uniform_cost_tour = uniform_cost(cities, num_cities)
         uniform_cost_tour.save_tour("uniform_{0}.pdf".format(num_cities))
-        uniform_cost_tour.print_tour()
+        # uniform_cost_tour.print_tour()
 
     # uniform_cost_tour = uniform_cost(cities, 2)
     # uniform_cost_tour.save_tour("uniform_{0}.pdf".format(2))
@@ -186,61 +186,36 @@ def uniform_cost(cities, num_cities=119):
     new_cities = new_cities[:num_cities - 1]
 
     start_city = new_cities.pop(0)
-    start_tour = None
     start_tour = Tour()
-    print "Empty Starting Tour: "
-    start_tour.print_tour()
     start_tour.add_city(start_city)
 
     remaining_cities = list(new_cities)
 
     queue = Queue.PriorityQueue()
-    print "Starting city: {0}".format(start_city.get_index())
-    print "Adding starting tour to Queue: ",  # TODO
-    start_tour.print_tour()  # TODO
-    print "Remaining cities: {0}".format(len(remaining_cities))  # TODO
-
     queue.put((start_tour, remaining_cities))
 
-    counter = 0  # TODO
     while True:
-        # raw_input("Press Enter to Continue...")  # TODO
         current_tour, remaining_cities = queue.get()
-        print "Pop Queue"  # TODO
-        current_tour.print_tour()  # TODO
-        print "Remaining cities: {0}".format(len(remaining_cities))  # TODO
 
         if not remaining_cities:
-            print "No remaining cities!"  # TODO
             if current_tour.is_complete():
-                print "Tour is complete"  # TODO
                 end_time = time.time()
                 total_time = end_time - start_time
-                print "Run Time for {0} cities: {1}".format(num_cities, total_time)
+                print "Run Time for {0} cities: {1}".format(num_cities,
+                                                            total_time)
                 return current_tour
             else:
-                print "Tour is NOT complete"   # TODO
-                current_tour.print_tour()  # TODO
-
                 current_tour.add_city(start_city)
                 current_tour.set_complete()
-
-                print "Putting completed tour back onto Queue"  # TODO
-                current_tour.print_tour()  # TODO
-
                 queue.put((current_tour, remaining_cities))
         else:
             for index, city in enumerate(remaining_cities):
-                print "Index: {0} City: {1}".format(index, city.get_index())
                 partial_tour = current_tour.get_copy()
                 partial_tour.add_city(city)
 
                 temp_remaining_cities = list(remaining_cities)
                 temp_remaining_cities.pop(index)
 
-                print "Adding partial tour to queue"
-                partial_tour.print_tour()
-                print "partial tour's remaining_cities: {0}".format(len(temp_remaining_cities))
                 queue.put((partial_tour, temp_remaining_cities))
 
 if __name__ == "__main__":
