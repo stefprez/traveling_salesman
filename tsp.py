@@ -2,7 +2,6 @@
 
 import math
 import numpy
-import pylab
 import sys
 import copy
 import csv
@@ -15,9 +14,11 @@ def main():
     cities = loadInCities()
     # greedy_tour = greedy_algorithm(cities)
     # greedy_tour.plot_tour()
-    for num_cities in range(2, 15):
-        uniform_cost_tour = uniform_cost(cities, num_cities)
-        uniform_cost_tour.save_tour("uniform_{0}.pdf".format(num_cities))
+    for num_cities in range(14, 25):
+        ich_tour = in_class_heuristic(cities, num_cities)
+        ich_tour.save_tour("ICH_{0}.pdf".format(num_cities))
+        # uniform_cost_tour = uniform_cost(cities, num_cities)
+        # uniform_cost_tour.save_tour("uniform_{0}.pdf".format(num_cities))
         # uniform_cost_tour.print_tour()
 
     # uniform_cost_tour = uniform_cost(cities, 2)
@@ -35,6 +36,39 @@ def loadInCities():
             cities.append(city)
             counter += 1
     return cities
+
+
+class LineSegment(object):
+    def __init__(self, x1, y1, x2, y2):
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+        self.slope = self.calculate_slope()
+        self._b = None
+        self._minx = None
+        self._maxx = None
+
+    def calculate_slope(self):
+        return (self.y2 - self.y1) / float(self.x2 - self.x1)
+
+    def get_b(self):
+        if self._b is None:
+            self._b = self.y1 - (self.slope * self.x1)
+
+        return self._b
+
+    def get_min_x(self):
+        if self._minx is None:
+            self._minx = min(self.x1, self.x2)
+
+        return self._minx
+
+    def get_max_x(self):
+        if self._maxx is None:
+            self._maxx = max(self.x1, self.x2)
+
+        return self._maxx
 
 
 class Tour(object):
@@ -73,6 +107,72 @@ class Tour(object):
             new_last_city = self._tour[-1]
             self._distance += Tour.distance_between_cities(old_last_city,
                                                            new_last_city)
+
+    def _get_lines_to_check(self):
+        lines_to_check = []
+        tour = self.get_tour()
+        for index in range(len(tour) - 3):
+            city_1 = tour[index]
+            city_2 = tour[index + 1]
+
+            if (city_1.get_x() == city_2.get_x()):
+                # ignore vertical line segment
+                continue
+
+            line = LineSegment(city_1.get_x(),
+                               city_1.get_y(),
+                               city_2.get_x(),
+                               city_2.get_y())
+            lines_to_check.append(line)
+
+        return lines_to_check
+
+    def has_intersecting_lines(self):
+        tour = self.get_tour()
+        if len(tour) < 4:
+            return False
+
+        last_city = tour[-1]
+        next_to_last_city = tour[-2]
+        new_line = LineSegment(last_city.get_x(),
+                               last_city.get_y(),
+                               next_to_last_city.get_x(),
+                               next_to_last_city.get_y())
+
+        lines_to_check = self._get_lines_to_check()
+
+        for old_line in lines_to_check:
+            if (old_line.get_max_x() < new_line.get_min_x()):
+                # Line segment x intervals don't overlap
+                continue
+
+            # Commented out due to infrequency of occurences
+            # if (old_line.slope == new_line.slope):
+            #     print "Same slope"
+            #     # lines parallel
+            #     continue
+
+            Xa = (new_line.get_b() - old_line.get_b()) / (old_line.slope - new_line.slope)
+
+            if (Xa < max(old_line.get_min_x(), new_line.get_min_x())) or (Xa > min(old_line.get_max_x(), new_line.get_max_x)):
+                # X value of intersection point is outside line segment intervals
+                continue
+
+            Ya1 = old_line.slope * Xa + old_line.get_b()
+            Ya2 = new_line.slope * Xa + new_line.get_b()
+
+            if (Ya1 != Ya2):
+                continue
+
+            if (Ya1 > min(max(new_line.y1, new_line.y2), max(old_line.y1, old_line.y2))):
+                continue
+
+            if (Ya1 < max(min(new_line.y1, new_line.y2), min(old_line.y1, old_line.y2))):
+                continue
+
+            return True
+
+        return False
 
     @staticmethod
     def distance_between_cities(city_1, city_2):
@@ -217,6 +317,54 @@ def uniform_cost(cities, num_cities=119):
                 temp_remaining_cities.pop(index)
 
                 queue.put((partial_tour, temp_remaining_cities))
+
+
+def in_class_heuristic(cities, num_cities=119):
+    start_time = time.time()
+
+    new_cities = copy.deepcopy(cities)
+    new_cities = new_cities[:num_cities - 1]
+
+    start_city = new_cities.pop(0)
+    start_tour = Tour()
+    start_tour.add_city(start_city)
+
+    remaining_cities = list(new_cities)
+
+    queue = Queue.PriorityQueue()
+    queue.put((start_tour, remaining_cities))
+
+    while True:
+        current_tour, remaining_cities = queue.get()
+
+        if not remaining_cities:
+            if current_tour.is_complete():
+                end_time = time.time()
+                total_time = end_time - start_time
+                print "Run Time for {0} cities: {1}".format(num_cities,
+                                                            total_time)
+                return current_tour
+            else:
+                current_tour.add_city(start_city)
+                current_tour.set_complete()
+                queue.put((current_tour, remaining_cities))
+        else:
+            for index, city in enumerate(remaining_cities):
+                partial_tour = current_tour.get_copy()
+                partial_tour.add_city(city)
+
+                if partial_tour.has_intersecting_lines():
+                    print "INTERSECTING LINES"
+                    partial_tour.plot_tour()
+                    continue
+                else:
+                    if len(partial_tour.get_tour()) > 3:
+                        print "No Intersections"
+                        partial_tour.plot_tour()
+                    temp_remaining_cities = list(remaining_cities)
+                    temp_remaining_cities.pop(index)
+                    queue.put((partial_tour, temp_remaining_cities))
+
 
 if __name__ == "__main__":
     main()
