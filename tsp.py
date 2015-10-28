@@ -15,8 +15,14 @@ def main():
     cities = loadInCities()
     # greedy_tour = greedy_algorithm(cities)
     # greedy_tour.plot_tour()
-    uniform_cost_tour = uniform_cost(cities, 10)
-    uniform_cost_tour.plot_tour()
+    for num_cities in range(2, 15):
+        uniform_cost_tour = uniform_cost(cities, num_cities)
+        uniform_cost_tour.save_tour("uniform_{0}.pdf".format(num_cities))
+        uniform_cost_tour.print_tour()
+
+    # uniform_cost_tour = uniform_cost(cities, 2)
+    # uniform_cost_tour.save_tour("uniform_{0}.pdf".format(2))
+    # uniform_cost_tour.print_tour()
 
 
 def loadInCities():
@@ -32,10 +38,21 @@ def loadInCities():
 
 
 class Tour(object):
-    def __init__(self):
-        self._distance = 0.0
-        self._tour = []
-        self._complete = False
+    def __init__(self, distance=None, tour=None, complete=None):
+        if distance is None:
+            self._distance = 0.0
+        else:
+            self._distance = distance
+
+        if tour is None:
+            self._tour = []
+        else:
+            self._tour = tour
+
+        if complete is None:
+            self._complete = False
+        else:
+            self._complete = complete
 
     def __cmp__(self, other):
         return cmp(self.get_distance(), other.get_distance())
@@ -46,14 +63,9 @@ class Tour(object):
     def get_tour(self):
         return self._tour
 
-    def is_complete(self):
-        return self._complete
-
     def add_city(self, city):
         self._tour.append(city)
         self._update_distance()
-        if len(self._tour) > 1 and (self._tour[0] == self._tour[-1]):
-            self._complete = True
 
     def _update_distance(self):
         if len(self._tour) >= 2:
@@ -79,6 +91,10 @@ class Tour(object):
             print "{0}".format(city.get_index())
 
     def plot_tour(self):
+        self._plot_setup()
+        plot.show()
+
+    def _plot_setup(self):
         cities_x = []
         cities_y = []
         for city in self._tour:
@@ -87,7 +103,20 @@ class Tour(object):
         plot.axis([-5, 105, -5, 105])
         plot.title("Tour Distance: {0}".format(self._distance))
         plot.plot(cities_x, cities_y, marker="o")
-        plot.show()
+
+    def save_tour(self, filename="default.png"):
+        self._plot_setup()
+        plot.savefig(filename)
+        plot.clf()  # Clear figure state
+
+    def get_copy(self):
+        return Tour(self.get_distance(), list(self.get_tour()))
+
+    def is_complete(self):
+        return self._complete
+
+    def set_complete(self):
+        self._complete = True
 
 
 class City(object):
@@ -152,32 +181,67 @@ def greedy_algorithm(cities):
 
 def uniform_cost(cities, num_cities=119):
     start_time = time.time()
-    cities = copy.deepcopy(cities)
-    cities = cities[:num_cities]
-    queue = Queue.PriorityQueue()
-    start_city = cities.pop()
+
+    new_cities = copy.deepcopy(cities)
+    new_cities = new_cities[:num_cities - 1]
+
+    start_city = new_cities.pop(0)
+    start_tour = None
     start_tour = Tour()
+    print "Empty Starting Tour: "
+    start_tour.print_tour()
     start_tour.add_city(start_city)
-    queue.put((start_tour, cities))
 
+    remaining_cities = list(new_cities)
+
+    queue = Queue.PriorityQueue()
+    print "Starting city: {0}".format(start_city.get_index())
+    print "Adding starting tour to Queue: ",  # TODO
+    start_tour.print_tour()  # TODO
+    print "Remaining cities: {0}".format(len(remaining_cities))  # TODO
+
+    queue.put((start_tour, remaining_cities))
+
+    counter = 0  # TODO
     while True:
+        # raw_input("Press Enter to Continue...")  # TODO
         current_tour, remaining_cities = queue.get()
+        print "Pop Queue"  # TODO
+        current_tour.print_tour()  # TODO
+        print "Remaining cities: {0}".format(len(remaining_cities))  # TODO
 
-        if len(remaining_cities) == 0:
-            current_tour.add_city(start_city)
-            end_time = time.time()
-            print str(end_time - start_time)
-            return current_tour
+        if not remaining_cities:
+            print "No remaining cities!"  # TODO
+            if current_tour.is_complete():
+                print "Tour is complete"  # TODO
+                end_time = time.time()
+                total_time = end_time - start_time
+                print "Run Time for {0} cities: {1}".format(num_cities, total_time)
+                return current_tour
+            else:
+                print "Tour is NOT complete"   # TODO
+                current_tour.print_tour()  # TODO
 
-        for city in remaining_cities:
-            partial_tour = copy.deepcopy(current_tour)
-            partial_tour.add_city(city)
+                current_tour.add_city(start_city)
+                current_tour.set_complete()
 
-            temp_remaining_cities = copy.deepcopy(remaining_cities)
-            temp_remaining_cities.remove(city)
+                print "Putting completed tour back onto Queue"  # TODO
+                current_tour.print_tour()  # TODO
 
-            queue.put((partial_tour, temp_remaining_cities))
+                queue.put((current_tour, remaining_cities))
+        else:
+            for index, city in enumerate(remaining_cities):
+                print "Index: {0} City: {1}".format(index, city.get_index())
+                partial_tour = current_tour.get_copy()
+                partial_tour.add_city(city)
 
+                temp_remaining_cities = list(remaining_cities)
+                temp_remaining_cities.pop(index)
+
+                print "Adding partial tour to queue"
+                partial_tour.print_tour()
+                print "partial tour's remaining_cities: {0}".format(len(temp_remaining_cities))
+                queue.put((partial_tour, temp_remaining_cities))
 
 if __name__ == "__main__":
     main()
