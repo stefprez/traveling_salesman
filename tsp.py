@@ -8,6 +8,7 @@ import csv
 import matplotlib.pyplot as plot
 import Queue
 import time
+import random
 
 
 def main():
@@ -102,16 +103,19 @@ class LineSegment(object):
 
 
 class Tour(object):
-    def __init__(self, distance=None, tour=None, complete=None):
-        if distance is None:
-            self._distance = 0.0
-        else:
-            self._distance = distance
-
+    def __init__(self, tour=None, distance=None, complete=None):
         if tour is None:
             self._tour = []
         else:
             self._tour = tour
+
+        if distance is None:
+            if self._tour:
+                self.get_distance()
+            else:
+                self._distance = 0.0
+        else:
+            self._distance = distance
 
         if complete is None:
             self._complete = False
@@ -122,6 +126,15 @@ class Tour(object):
         return cmp(self.get_distance(), other.get_distance())
 
     def get_distance(self):
+        if self._distance == 0.0:
+            tot_dist = 0.0
+            for index in xrange(0, len(self._tour) - 1):
+                city1 = self._tour[index]
+                city2 = self._tour[index + 1]
+                tot_dist += Tour.distance_between_cities(city1, city2)
+
+            self._distance = tot_dist
+
         return self._distance
 
     def get_tour(self):
@@ -218,7 +231,7 @@ class Tour(object):
         plot.clf()  # Clear figure state
 
     def get_copy(self):
-        return Tour(self.get_distance(), list(self.get_tour()))
+        return Tour(list(self.get_tour()), self.get_distance())
 
     def is_complete(self):
         return self._complete
@@ -364,6 +377,64 @@ def in_class_heuristic(cities, num_cities=119):
                     temp_remaining_cities.pop(index)
                     queue.put((partial_tour, temp_remaining_cities))
 
+
+def genetic_algorithm(cities, pop_size, num_cities=119):
+    population = get_starting_population(cities, pop_size)
+
+    generation = 0
+
+    while generation < 1000000:
+
+        if generation % 100000 == 0:
+            curr_min_tour = get_min_tour(population)
+            min_dist = curr_min_tour.get_distance()
+            print "Generation: {0} Min tour distance: {1}".format(generation,
+                                                                  min_dist)
+
+        random.shuffle(population)
+        new_population = []
+
+        for index in xrange(0, len(population), 2):
+            tour1 = population[index]
+            tour2 = population[index + 1]
+
+            # Mutate pairs and generate new children
+            child1, child2 = mutate_and_breed(tour1, tour2)
+
+            # New children are new population
+            new_population.append(child1)
+            new_population.append(child2)
+
+        population = new_population
+        generation += 1
+
+
+def mutate_and_breed(parent1, parent2):
+    pass
+
+
+def get_starting_population(cities, pop_size):
+    start_tour = greedy_algorithm(cities)
+    start_tour_list = start_tour.get_tour()
+    tour_list_len = len(start_tour_list)
+
+    start_pop = [Tour(random.sample(start_tour_list, tour_list_len)) for _ in xrange(0, pop_size - 1)]
+    start_pop.append(start_tour)
+
+    return start_pop
+
+
+def get_min_tour(tours):
+    min_tour = None
+    min_tour_distance = sys.maxint
+
+    for tour in tours:
+        tour_dist = tour.get_distance()
+        if tour_dist < min_tour_distance:
+            min_tour = tour
+            min_tour_distance = tour_dist
+
+    return min_tour
 
 if __name__ == "__main__":
     main()
