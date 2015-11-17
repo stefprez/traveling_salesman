@@ -1,0 +1,13 @@
+Run Time for 2 cities: 0.00150299072266
+Run Time for 3 cities: 0.00142097473145
+Run Time for 4 cities: 0.00144600868225
+Run Time for 5 cities: 0.00156402587891
+Run Time for 6 cities: 0.00201082229614
+Run Time for 7 cities: 0.004714012146
+Run Time for 8 cities: 0.0199699401855
+Run Time for 9 cities: 0.0800280570984
+Run Time for 10 cities: 0.393505096436
+Run Time for 11 cities: 2.69933390617
+Run Time for 12 cities: 15.1834039688
+Run Time for 13 cities: 70.7729129791
+Run Time for 14 cities: 231.787373781
