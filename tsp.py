@@ -380,7 +380,6 @@ def in_class_heuristic(cities, num_cities=119):
 
 def genetic_algorithm(cities, pop_size, num_cities=119):
     population = get_starting_population(cities, pop_size)
-
     generation = 0
 
     while generation < 1000000:
@@ -418,7 +417,10 @@ def get_starting_population(cities, pop_size):
     start_tour_list = start_tour.get_tour()
     tour_list_len = len(start_tour_list)
 
-    start_pop = [Tour(random.sample(start_tour_list, tour_list_len)) for _ in xrange(0, pop_size - 1)]
+    start_pop = [Tour(random.sample(start_tour_list, tour_list_len))
+                 for _
+                 in xrange(0, pop_size - 1)]
+
     start_pop.append(start_tour)
 
     return start_pop
