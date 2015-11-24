@@ -13,8 +13,8 @@ import random
 
 def main():
     cities = loadInCities()
-    greedy_tour = greedy_algorithm(cities)
-    greedy_tour.plot_tour()
+    # greedy_tour = greedy_algorithm(cities)
+    # greedy_tour.plot_tour()
     # for num_cities in range(16, 20):
     #     ich_tour = in_class_heuristic(cities, num_cities)
     #     ich_tour.save_tour("ICH_{0}.pdf".format(num_cities))
@@ -25,6 +25,11 @@ def main():
     # uniform_cost_tour = uniform_cost(cities, 2)
     # uniform_cost_tour.save_tour("uniform_{0}.pdf".format(2))
     # uniform_cost_tour.print_tour()
+
+    genectic_tour = genetic_algorithm(cities, 30)
+    genectic_tour.plot_tour()
+    # genectic_tour.save_tour("genetic_algorithm.pdf")
+    genectic_tour.print_tour()
 
 
 def loadInCities():
@@ -110,10 +115,9 @@ class Tour(object):
             self._tour = tour
 
         if distance is None:
+            self._distance = 0.0
             if self._tour:
                 self.get_distance()
-            else:
-                self._distance = 0.0
         else:
             self._distance = distance
 
@@ -124,6 +128,9 @@ class Tour(object):
 
     def __cmp__(self, other):
         return cmp(self.get_distance(), other.get_distance())
+
+    def __len__(self):
+        return len(self._tour)
 
     def get_distance(self):
         if self._distance == 0.0:
@@ -384,18 +391,22 @@ def genetic_algorithm(cities, pop_size, num_cities=119):
 
     while generation < 1000000:
 
-        if generation % 100000 == 0:
+        if generation % 10 == 0:
             curr_min_tour = get_min_tour(population)
             min_dist = curr_min_tour.get_distance()
             print "Generation: {0} Min tour distance: {1}".format(generation,
                                                                   min_dist)
 
-        random.shuffle(population)
+        # random.shuffle(population)
         new_population = []
+        choices = get_choices(population)
+        weight_total = sum(weight for choice, weight in choices)
 
         for index in xrange(0, len(population), 2):
-            tour1 = population[index]
-            tour2 = population[index + 1]
+            # tour1 = population[index]
+            # tour2 = population[index + 1]
+            tour1 = get_parent(choices, weight_total)
+            tour2 = get_parent(choices, weight_total)
 
             # Mutate pairs and generate new children
             child1, child2 = mutate_and_breed(tour1, tour2)
@@ -408,8 +419,85 @@ def genetic_algorithm(cities, pop_size, num_cities=119):
         generation += 1
 
 
+def get_parent(choices, total):
+    r = random.uniform(0, total)
+    upto = 0
+
+    for choice, weight in choices:
+        upto += weight
+        if upto >= r:
+            return choice
+
+    assert False, "Shouldn't get here."
+
+
+def get_choices(population):
+    choices = []
+    for parent in population:
+        weight = fitness(parent)
+        choice = (parent, weight)
+        choices.append(choice)
+    return choices
+
+
+def fitness(tour):
+    return float(1) / tour.get_distance()
+
+
 def mutate_and_breed(parent1, parent2):
-    pass
+    tour_len = len(parent1)
+    if tour_len == 0:
+        print "Length of tour list is 0!"
+        sys.exit(1)
+
+    parent1 = parent1.get_tour()
+    parent2 = parent2.get_tour()
+
+    # Get random start and stop values
+    start = 0
+    stop = 0
+    while start == stop:
+        rand1 = random.randint(0, tour_len)
+        rand2 = random.randint(0, tour_len)
+        start = min(rand1, rand2)
+        stop = max(rand1, rand2)
+
+    # Get slices
+    slice1 = parent1[start:stop]
+    slice2 = parent2[start:stop]
+    empty_slice = [None for _ in slice1]
+
+    # Set slice areas to None for duplicate checking
+    parent1[start:stop] = empty_slice
+    parent2[start:stop] = empty_slice
+
+    # Replace would-be duplicates in parent2
+    for slice_ind, val in enumerate(slice1):
+        try:
+            par_ind = parent2.index(val)
+            parent2[par_ind] = slice2[slice_ind]
+        except:
+            # Both slices contain value
+            pass
+
+    # Replace would-be duplicates in parent1
+    for slice_ind, val in enumerate(slice2):
+        try:
+            par_ind = parent1.index(val)
+            parent1[par_ind] = slice1[slice_ind]
+        except:
+            # Both slices contain value
+            pass
+
+    parent1[start:stop] = slice2
+    parent2[start:stop] = slice1
+
+    # Mutate?
+
+    # Now children
+    child1 = Tour(parent1)
+    child2 = Tour(parent2)
+    return child1, child2
 
 
 def get_starting_population(cities, pop_size):
