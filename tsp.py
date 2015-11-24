@@ -391,7 +391,7 @@ def genetic_algorithm(cities, pop_size, num_cities=119):
 
     while generation < 1000000:
 
-        if generation % 10 == 0:
+        if generation % 100 == 0:
             curr_min_tour = get_min_tour(population)
             min_dist = curr_min_tour.get_distance()
             print "Generation: {0} Min tour distance: {1}".format(generation,
@@ -405,8 +405,8 @@ def genetic_algorithm(cities, pop_size, num_cities=119):
         for index in xrange(0, len(population), 2):
             # tour1 = population[index]
             # tour2 = population[index + 1]
-            tour1 = get_parent(choices, weight_total)
-            tour2 = get_parent(choices, weight_total)
+            tour1 = get_parent_for_breeding(choices, weight_total)
+            tour2 = get_parent_for_breeding(choices, weight_total)
 
             # Mutate pairs and generate new children
             child1, child2 = mutate_and_breed(tour1, tour2)
@@ -419,7 +419,8 @@ def genetic_algorithm(cities, pop_size, num_cities=119):
         generation += 1
 
 
-def get_parent(choices, total):
+def get_parent_for_breeding(choices, total):
+    # O(n)
     r = random.uniform(0, total)
     upto = 0
 
@@ -432,6 +433,7 @@ def get_parent(choices, total):
 
 
 def get_choices(population):
+    # O(n)
     choices = []
     for parent in population:
         weight = fitness(parent)
@@ -441,31 +443,39 @@ def get_choices(population):
 
 
 def fitness(tour):
-    return float(1) / tour.get_distance()
+    return float(1) / tour.get_distance()**2
+
+
+# def get_slice_vals(slice1, slice2):
+#     slice_vals = {}
+#     for cur_slice in [slice1, slice2]:
+#         for val in cur_slice:
+#             if val not in slice_vals:
+#                 slice_vals[val] = True
+
+#     return slice_vals
 
 
 def mutate_and_breed(parent1, parent2):
+    p1 = parent1
+    p2 = parent2
     tour_len = len(parent1)
-    if tour_len == 0:
-        print "Length of tour list is 0!"
-        sys.exit(1)
+    # if tour_len == 0:
+    #     print "Length of tour list is 0!"
+    #     sys.exit(1)
 
     parent1 = parent1.get_tour()
     parent2 = parent2.get_tour()
 
     # Get random start and stop values
-    start = 0
-    stop = 0
-    while start == stop:
-        rand1 = random.randint(0, tour_len)
-        rand2 = random.randint(0, tour_len)
-        start = min(rand1, rand2)
-        stop = max(rand1, rand2)
+    start, stop = get_two_rand_ints(tour_len)
 
     # Get slices
     slice1 = parent1[start:stop]
     slice2 = parent2[start:stop]
     empty_slice = [None for _ in slice1]
+
+    # slice_vals = get_slice_vals(slice1, slice2)
 
     # Set slice areas to None for duplicate checking
     parent1[start:stop] = empty_slice
@@ -497,7 +507,39 @@ def mutate_and_breed(parent1, parent2):
     # Now children
     child1 = Tour(parent1)
     child2 = Tour(parent2)
+
+    child1 = mutate(child1)
+    child2 = mutate(child2)
     return child1, child2
+
+
+def get_two_rand_ints(max_value):
+    low = 0
+    high = 0
+    while low == high:
+        rand1 = random.randint(0, max_value)
+        rand2 = random.randint(0, max_value)
+        low = min(rand1, rand2)
+        high = max(rand1, rand2)
+    return low, high
+
+
+def mutate(child):
+    alpha = 0.001
+
+    if random.random() <= alpha:
+        # Mutate
+        tour = child.get_tour()
+        low, high = get_two_rand_ints(len(tour) - 1)
+
+        temp = tour[low]
+        tour[low] = tour[high]
+        tour[high] = temp
+
+        return Tour(tour)
+    else:
+        # No mutation
+        return child
 
 
 def get_starting_population(cities, pop_size):
