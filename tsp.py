@@ -63,7 +63,7 @@ class Tour(object):
         elif other is None:
             return False
         else:
-            return cmp(self.get_distance(), other.get_distance())
+            return cmp(self._distance, other._distance)
 
     def __len__(self):
         return len(self._tour)
@@ -216,21 +216,20 @@ def greedy_algorithm(cities):
 
 
 def genetic_algorithm(cities, pop_size, num_cities=119):
+    random.seed(12345)
     population = get_starting_population(cities, pop_size)
     generation = 0
 
     start_time = time.time()
 
-    while generation < 1000000:
+    while generation < 20000:
         curr_min_tour = get_min_tour(population)
 
         if generation % 250 == 0:
             min_dist = curr_min_tour.get_distance()
             time_gen = (time.time() - start_time) / 250
             print "Time per gen: {}".format(time_gen)
-            # if min_dist < 900:
-            #     curr_min_tour.print_tour()
-            #     curr_min_tour.plot_tour()
+
             # curr_min_tour.print_tour()
             # curr_min_tour.plot_tour()
             print "Generation: {0} Min tour distance: {1}".format(generation,
@@ -251,14 +250,15 @@ def genetic_algorithm(cities, pop_size, num_cities=119):
 
         population = new_population
         generation += 1
+    return get_min_tour(population)
 
 
 def get_parents_for_breeding(population, min_tour):
     random_parent = population[random.randint(1, len(population) - 1)]
 
-    change_for_alpha = 0.5
+    chance_for_alpha = .25
 
-    if random.uniform(0, 1) > change_for_alpha:
+    if random.uniform(0, 1) > chance_for_alpha:
         # Alpha not selected, pick random parent
         random_alpha = population[random.randint(1, len(population) - 1)]
     else:
@@ -269,7 +269,7 @@ def get_parents_for_breeding(population, min_tour):
 
 
 def fitness(tour):
-    return float(1) / tour.get_distance()
+    return float(1) / tour._distance
 
 
 def mutate_and_breed(parent1, parent2):
@@ -280,7 +280,71 @@ def mutate_and_breed(parent1, parent2):
     # Get random start and stop values
     start, stop = get_two_rand_ints(tour_len)
 
-    # # Get slices
+    # # SPIKE START
+    # child1_dupe_map = {}
+    # child2_dupe_map = {}
+
+    # for index in xrange(start, stop):
+    #     p1_city = p1_tour[index]
+    #     p2_city = p2_tour[index]
+
+    #     # Swap
+    #     p1_tour[index] = p2_city
+    #     p2_tour[index] = p1_city
+
+    #     child1_dupe_map[p2_city] = p1_city
+    #     child2_dupe_map[p1_city] = p2_city
+
+    # # Remove duplicates from first section
+    # for index in xrange(0, start):
+    #     # P1
+    #     p1_city = p1_tour[index]
+
+    #     while p1_city in child1_dupe_map:
+    #         p1_city = child1_dupe_map[p1_city]
+
+    #     p1_tour[index] = p1_city
+
+    #     # P2
+    #     p2_city = p2_tour[index]
+
+    #     while p2_city in child2_dupe_map:
+    #         p2_city = child2_dupe_map[p2_city]
+
+    #     p2_tour[index] = p2_city
+
+    # # Remove duplicates from second section
+    # for index in xrange(stop, tour_len):
+    #     # P1
+    #     p1_city = p1_tour[index]
+
+    #     while p1_city in child1_dupe_map:
+    #         p1_city = child1_dupe_map[p1_city]
+
+    #     p1_tour[index] = p1_city
+
+    #     # P2
+    #     p2_city = p2_tour[index]
+
+    #     while p2_city in child2_dupe_map:
+    #         p2_city = child2_dupe_map[p2_city]
+
+    #     p2_tour[index] = p2_city
+
+    # # Mutate
+    # child1 = mutate(p1_tour)
+    # child2 = mutate(p2_tour)
+
+    # # if not child1.is_valid():
+    # #     print "INVALID"
+    # #     sys.exit(1)
+    # # elif not child2.is_valid():
+    # #     print "INVALID"
+    # #     sys.exit(1)
+
+    # # SPIKE STOP
+
+    # Get slices
     slice1 = p1_tour[start:stop]
     slice2 = p2_tour[start:stop]
 
@@ -348,7 +412,7 @@ def get_two_rand_ints(max_value):
 
 def mutate(tour, alpha=None):
     if alpha is None:
-        alpha = 0.5
+        alpha = 0.4
 
     if random.random() <= alpha:
         # Mutate
@@ -386,7 +450,7 @@ def get_min_tour(tours):
     min_tour_distance = sys.maxint
 
     for tour in tours:
-        tour_dist = tour.get_distance()
+        tour_dist = tour._distance
         if tour_dist < min_tour_distance:
             min_tour = tour
             min_tour_distance = tour_dist
