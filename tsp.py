@@ -31,7 +31,7 @@ def main():
     # uniform_cost_tour.save_tour("uniform_{0}.pdf".format(2))
     # uniform_cost_tour.print_tour()
 
-    genectic_tour = genetic_algorithm(cities, 26)
+    genectic_tour = genetic_algorithm(cities, 100)
     genectic_tour.plot_tour()
     # genectic_tour.save_tour("genetic_algorithm.pdf")
     genectic_tour.print_tour()
@@ -176,7 +176,7 @@ class City(object):
 
 
 def greedy_algorithm(cities):
-    cities = cities[:50]
+    # cities = cities[:50]
     start_time = time.time()
     starting_cities = copy.deepcopy(cities)
     min_tour = Tour()
@@ -222,11 +222,11 @@ def genetic_algorithm(cities, pop_size, num_cities=119):
     start_time = time.time()
 
     while generation < 1000000:
+        curr_min_tour = get_min_tour(population)
 
-        if generation % 1000 == 0:
-            curr_min_tour = get_min_tour(population)
+        if generation % 250 == 0:
             min_dist = curr_min_tour.get_distance()
-            time_gen = (time.time() - start_time) / 1000
+            time_gen = (time.time() - start_time) / 250
             print "Time per gen: {}".format(time_gen)
             # if min_dist < 900:
             #     curr_min_tour.print_tour()
@@ -240,7 +240,7 @@ def genetic_algorithm(cities, pop_size, num_cities=119):
         new_population = []
 
         for index in xrange(0, len(population), 2):
-            tour1, tour2 = get_parents_for_breeding(population)
+            tour1, tour2 = get_parents_for_breeding(population, curr_min_tour)
 
             # Mutate pairs and generate new children
             child1, child2 = mutate_and_breed(tour1, tour2)
@@ -253,11 +253,19 @@ def genetic_algorithm(cities, pop_size, num_cities=119):
         generation += 1
 
 
-def get_parents_for_breeding(population):
-    p1 = get_min_tour(population)
-    p2 = population[random.randint(1, len(population) - 1)]
+def get_parents_for_breeding(population, min_tour):
+    random_parent = population[random.randint(1, len(population) - 1)]
 
-    return p1, p2
+    change_for_alpha = 0.5
+
+    if random.uniform(0, 1) > change_for_alpha:
+        # Alpha not selected, pick random parent
+        random_alpha = population[random.randint(1, len(population) - 1)]
+    else:
+        # Alpha selected
+        random_alpha = min_tour
+
+    return random_parent, random_alpha
 
 
 def fitness(tour):
@@ -340,7 +348,7 @@ def get_two_rand_ints(max_value):
 
 def mutate(tour, alpha=None):
     if alpha is None:
-        alpha = 0.01
+        alpha = 0.5
 
     if random.random() <= alpha:
         # Mutate
