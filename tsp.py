@@ -9,6 +9,11 @@ import matplotlib.pyplot as plot
 import Queue
 import time
 import random
+import pprint
+import cProfile
+import numpy.linalg as linalg
+
+sqrt = math.sqrt
 
 
 def main():
@@ -26,7 +31,7 @@ def main():
     # uniform_cost_tour.save_tour("uniform_{0}.pdf".format(2))
     # uniform_cost_tour.print_tour()
 
-    genectic_tour = genetic_algorithm(cities, 30)
+    genectic_tour = genetic_algorithm(cities, 26)
     genectic_tour.plot_tour()
     # genectic_tour.save_tour("genetic_algorithm.pdf")
     genectic_tour.print_tour()
@@ -36,112 +41,46 @@ def loadInCities():
     cities = []
     with open('cities.csv', 'r') as city_file:
         reader = csv.reader(city_file)
-        counter = 0
         for index, line in enumerate(reader):
             city = City(line[0], line[1], index)
             cities.append(city)
-            counter += 1
     return cities
 
 
-class LineSegment(object):
-    def __init__(self, city1, city2):
-        self.city1 = city1
-        self.city2 = city2
-        self.x1 = city1.x
-        self.y1 = city1.y
-        self.x2 = city2.x
-        self.y2 = city2.y
-        self._minx = None
-        self._maxx = None
-        self._miny = None
-        self._maxy = None
-
-    def get_min_x(self):
-        if self._minx is None:
-            self._minx = min(self.x1, self.x2)
-
-        return self._minx
-
-    def get_max_x(self):
-        if self._maxx is None:
-            self._maxx = max(self.x1, self.x2)
-
-        return self._maxx
-
-    def get_min_y(self):
-        if self._miny is None:
-            self._miny = min(self.y1, self.y2)
-
-        return self._miny
-
-    def get_max_y(self):
-        if self._maxy is None:
-            self._maxy = max(self.y1, self.y2)
-
-        return self._maxy
-
-    def on_segment(self, city):
-        city_x = city.x
-        city_y = city.y
-        if (city_x <= self.get_max_x() and
-           city_x >= self.get_min_x() and
-           city_y <= self.get_max_y() and
-           city_y >= self.get_min_y()):
-            return True
-        else:
-            return False
-
-    def orientation(self, city):
-        val = ((city.y - self.y1) * (self.x2 - city.x) -
-               (city.x - self.x1) * (self.y2 - city.y))
-
-        if val > 0:
-            # Clockwise
-            return 1
-        elif val < 0:
-            # Counterclockwise
-            return 2
-        else:
-            # Colinear
-            return 0
-
-
 class Tour(object):
-    def __init__(self, tour=None, distance=None, complete=None):
+    # distance_map = {}
+
+    def __init__(self, tour=None):
         if tour is None:
             self._tour = []
         else:
             self._tour = tour
-
-        if distance is None:
-            self._distance = 0.0
-            if self._tour:
-                self.get_distance()
-        else:
-            self._distance = distance
-
-        if complete is None:
-            self._complete = False
-        else:
-            self._complete = complete
+        self.update_distance()
 
     def __cmp__(self, other):
-        return cmp(self.get_distance(), other.get_distance())
+        if self is None:
+            return False
+        elif other is None:
+            return False
+        else:
+            return cmp(self.get_distance(), other.get_distance())
 
     def __len__(self):
         return len(self._tour)
 
     def get_distance(self):
-        if self._distance == 0.0:
-            tot_dist = 0.0
-            for index in xrange(0, len(self._tour) - 1):
-                city1 = self._tour[index]
-                city2 = self._tour[index + 1]
-                tot_dist += Tour.distance_between_cities(city1, city2)
+        # if self._distance == 0.0:
+        #     tot_dist = 0.0
+        #     end_tour_index = len(self._tour) - 1
+        #     for index in xrange(0, end_tour_index):
+        #         city1 = self._tour[index]
+        #         city2 = self._tour[index + 1]
+        #         tot_dist += Tour.distance_between_cities(city1, city2)
 
-            self._distance = tot_dist
+        #     tot_dist += Tour.distance_between_cities(self._tour[0],
+        #                                              self._tour[end_tour_index])
 
+        #     self._distance = tot_dist
         return self._distance
 
     def get_tour(self):
@@ -149,74 +88,50 @@ class Tour(object):
 
     def add_city_and_update(self, city):
         self._tour.append(city)
-        self.update_distance()
+        self.update_distance_old()
 
     def add_city(self, city):
         self._tour.append(city)
 
-    def update_distance(self):
+    def update_distance_old(self):
         old_last_city = self._tour[-2]
         new_last_city = self._tour[-1]
         self._distance += Tour.distance_between_cities(old_last_city,
                                                        new_last_city)
 
-    def _get_lines_to_check(self):
-        lines_to_check = []
-        tour = self.get_tour()
-        for index in range(len(tour) - 3):
-            city_1 = tour[index]
-            city_2 = tour[index + 1]
+    def update_distance(self):
+        tour = self._tour
+        tot_dist = 0.0
+        if tour:
+            end_tour_index = len(tour) - 1
+            for index in xrange(0, end_tour_index):
+                city1 = tour[index]
+                city2 = tour[index + 1]
+                tot_dist += Tour.distance_between_cities(city1, city2)
 
-            if (city_1.x == city_2.x):
-                # ignore vertical line segment
-                continue
+            tot_dist += Tour.distance_between_cities(tour[0], tour[end_tour_index])
 
-            line = LineSegment(city_1, city_2)
-            lines_to_check.append(line)
-
-        return lines_to_check
-
-    def has_intersecting_lines(self):
-        tour = self.get_tour()
-
-        last_city = tour[-1]
-        next_to_last_city = tour[-2]
-        new_line = LineSegment(last_city, next_to_last_city)
-
-        lines_to_check = self._get_lines_to_check()
-
-        for old_line in lines_to_check:
-            o1 = new_line.orientation(old_line.city1)
-            o2 = new_line.orientation(old_line.city2)
-            o3 = old_line.orientation(new_line.city1)
-            o4 = old_line.orientation(new_line.city2)
-
-            if (o1 != o2) and (o3 != o4):
-                return True
-            elif (o1 == 0 and new_line.on_segment(old_line.city1)):
-                return True
-            elif (o2 == 0 and new_line.on_segment(old_line.city2)):
-                return True
-            elif (o3 == 0 and old_line.on_segment(new_line.city1)):
-                return True
-            elif (o4 == 0 and old_line.on_segment(new_line.city2)):
-                return True
-        return False
+        self._distance = tot_dist
 
     @staticmethod
     def distance_between_cities(city_1, city_2):
-        x1 = city_1.x
-        y1 = city_1.y
-        x2 = city_2.x
-        y2 = city_2.y
-
-        return math.sqrt(((x2-x1)**2)+((y2-y1)**2))
+        return sqrt(
+            ((city_2.x-city_1.x)**2) +
+            ((city_2.y - city_1.y)**2))
 
     def print_tour(self):
-        print "Tour Distance: {}".format(self._distance)
+        print "Tour Distance: {}".format(self.get_distance())
         print "Tour: "
         for city in self._tour:
             print "{0}".format(city.index)
+
+    def get_tour_string(self):
+        string = ""
+        string += "Tour Distance: {}\n".format(self.get_distance())
+        string += "Tour: \n"
+        for city in self._tour:
+            string += "{0}\n".format(city.index)
+        return string
 
     def plot_tour(self):
         self._plot_setup()
@@ -229,7 +144,7 @@ class Tour(object):
             cities_x.append(city.x)
             cities_y.append(city.y)
         plot.axis([-5, 105, -5, 105])
-        plot.title("Tour Distance: {0}".format(self._distance))
+        plot.title("Tour Distance: {0}".format(self.get_distance()))
         plot.plot(cities_x, cities_y, marker="o")
 
     def save_tour(self, filename="default.png"):
@@ -237,14 +152,8 @@ class Tour(object):
         plot.savefig(filename)
         plot.clf()  # Clear figure state
 
-    def get_copy(self):
-        return Tour(list(self.get_tour()), self.get_distance())
-
-    def is_complete(self):
-        return self._complete
-
-    def set_complete(self):
-        self._complete = True
+    def is_valid(self):
+        return len(self._tour) == len(set(self._tour))
 
 
 class City(object):
@@ -262,8 +171,12 @@ class City(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __hash__(self):
+        return self.index
+
 
 def greedy_algorithm(cities):
+    cities = cities[:50]
     start_time = time.time()
     starting_cities = copy.deepcopy(cities)
     min_tour = Tour()
@@ -302,100 +215,27 @@ def greedy_algorithm(cities):
     return min_tour
 
 
-def uniform_cost(cities, num_cities=119):
-    start_time = time.time()
-
-    new_cities = copy.deepcopy(cities)
-    new_cities = new_cities[:num_cities - 1]
-
-    start_city = new_cities.pop(0)
-    start_tour = Tour()
-    start_tour.add_city(start_city)
-
-    remaining_cities = list(new_cities)
-
-    queue = Queue.PriorityQueue()
-    queue.put((start_tour, remaining_cities))
-
-    while True:
-        current_tour, remaining_cities = queue.get()
-
-        if not remaining_cities:
-            if current_tour.is_complete():
-                end_time = time.time()
-                total_time = end_time - start_time
-                print "Run Time for {0} cities: {1}".format(num_cities,
-                                                            total_time)
-                return current_tour
-            else:
-                current_tour.add_city(start_city)
-                current_tour.set_complete()
-                queue.put((current_tour, remaining_cities))
-        else:
-            for index, city in enumerate(remaining_cities):
-                partial_tour = current_tour.get_copy()
-                partial_tour.add_city(city)
-
-                temp_remaining_cities = list(remaining_cities)
-                temp_remaining_cities.pop(index)
-
-                queue.put((partial_tour, temp_remaining_cities))
-
-
-def in_class_heuristic(cities, num_cities=119):
-    start_time = time.time()
-
-    new_cities = copy.deepcopy(cities)
-    new_cities = new_cities[:num_cities - 1]
-
-    start_city = new_cities.pop(0)
-    start_tour = Tour()
-    start_tour.add_city(start_city)
-
-    remaining_cities = list(new_cities)
-
-    queue = Queue.PriorityQueue()
-    queue.put((start_tour, remaining_cities))
-
-    while True:
-        current_tour, remaining_cities = queue.get()
-
-        if not remaining_cities:
-            if current_tour.is_complete():
-                end_time = time.time()
-                total_time = end_time - start_time
-                print "Run Time for {0} cities: {1}".format(num_cities,
-                                                            total_time)
-                return current_tour
-            else:
-                current_tour.add_city_and_update(start_city)
-                current_tour.set_complete()
-                queue.put((current_tour, remaining_cities))
-        else:
-            for index, city in enumerate(remaining_cities):
-                partial_tour = current_tour.get_copy()
-                partial_tour.add_city(city)
-
-                if partial_tour.has_intersecting_lines():
-                    continue
-                else:
-                    partial_tour.update_distance()
-                    temp_remaining_cities = list(remaining_cities)
-                    temp_remaining_cities.pop(index)
-                    queue.put((partial_tour, temp_remaining_cities))
-
-
 def genetic_algorithm(cities, pop_size, num_cities=119):
     population = get_starting_population(cities, pop_size)
     generation = 0
 
+    start_time = time.time()
+
     while generation < 1000000:
 
-        if generation % 100 == 0:
+        if generation % 1000 == 0:
             curr_min_tour = get_min_tour(population)
             min_dist = curr_min_tour.get_distance()
+            time_gen = (time.time() - start_time) / 1000
+            print "Time per gen: {}".format(time_gen)
+            # if min_dist < 900:
+            #     curr_min_tour.print_tour()
+            #     curr_min_tour.plot_tour()
+            # curr_min_tour.print_tour()
+            # curr_min_tour.plot_tour()
             print "Generation: {0} Min tour distance: {1}".format(generation,
                                                                   min_dist)
+            start_time = time.time()
 
         # random.shuffle(population)
         new_population = []
@@ -403,10 +243,7 @@ def genetic_algorithm(cities, pop_size, num_cities=119):
         weight_total = sum(weight for choice, weight in choices)
 
         for index in xrange(0, len(population), 2):
-            # tour1 = population[index]
-            # tour2 = population[index + 1]
-            tour1 = get_parent_for_breeding(choices, weight_total)
-            tour2 = get_parent_for_breeding(choices, weight_total)
+            tour1, tour2 = get_parents_for_breeding(choices, weight_total)
 
             # Mutate pairs and generate new children
             child1, child2 = mutate_and_breed(tour1, tour2)
@@ -419,17 +256,32 @@ def genetic_algorithm(cities, pop_size, num_cities=119):
         generation += 1
 
 
-def get_parent_for_breeding(choices, total):
+def get_parents_for_breeding(choices, total):
     # O(n)
-    r = random.uniform(0, total)
-    upto = 0
+    r1 = random.uniform(0, total)
+    r2 = random.uniform(0, total)
+    upto1 = 0
+    upto2 = 0
 
-    for choice, weight in choices:
-        upto += weight
-        if upto >= r:
-            return choice
+    p1 = None
+    p2 = None
+    counter = 0
+    while p1 == p2 and counter < len(choices):
+        for choice, weight in choices:
+            upto1 += weight
+            upto2 += weight
+            if p1 is None and upto1 >= r1:
+                p1 = choice
+                if p2:
+                    break
+            elif p2 is None and upto2 >= r2:
+                p2 = choice
+                if p1:
+                    break
+        counter += 1
 
-    assert False, "Shouldn't get here."
+    return p1, p2
+    # assert False, "Shouldn't get here."
 
 
 def get_choices(population):
@@ -443,73 +295,69 @@ def get_choices(population):
 
 
 def fitness(tour):
-    return float(1) / tour.get_distance()**2
-
-
-# def get_slice_vals(slice1, slice2):
-#     slice_vals = {}
-#     for cur_slice in [slice1, slice2]:
-#         for val in cur_slice:
-#             if val not in slice_vals:
-#                 slice_vals[val] = True
-
-#     return slice_vals
+    return float(1) / tour.get_distance()
 
 
 def mutate_and_breed(parent1, parent2):
-    p1 = parent1
-    p2 = parent2
     tour_len = len(parent1)
-    # if tour_len == 0:
-    #     print "Length of tour list is 0!"
-    #     sys.exit(1)
-
-    parent1 = parent1.get_tour()
-    parent2 = parent2.get_tour()
+    p1_tour = parent1.get_tour()
+    p2_tour = parent2.get_tour()
 
     # Get random start and stop values
     start, stop = get_two_rand_ints(tour_len)
 
-    # Get slices
-    slice1 = parent1[start:stop]
-    slice2 = parent2[start:stop]
-    empty_slice = [None for _ in slice1]
+    # # Get slices
+    slice1 = p1_tour[start:stop]
+    slice2 = p2_tour[start:stop]
 
-    # slice_vals = get_slice_vals(slice1, slice2)
+    # Make maps of slices
+    slice1_map = {city: slice_ind
+                  for slice_ind, city
+                  in enumerate(slice1)}
 
-    # Set slice areas to None for duplicate checking
-    parent1[start:stop] = empty_slice
-    parent2[start:stop] = empty_slice
+    slice2_map = {city: slice_ind
+                  for slice_ind, city
+                  in enumerate(slice2)}
 
-    # Replace would-be duplicates in parent2
-    for slice_ind, val in enumerate(slice1):
-        try:
-            par_ind = parent2.index(val)
-            parent2[par_ind] = slice2[slice_ind]
-        except:
-            # Both slices contain value
-            pass
+    # Make map from a city in a slice to it's new city
+    child1_dupe_map = {}
+    for index, city in enumerate(slice2):
+        if city not in slice1_map:
+            target_city = slice1[index]
+            while target_city in slice2_map:
+                index = slice2_map[target_city]
+                target_city = slice1[index]
+            child1_dupe_map[city] = target_city
 
-    # Replace would-be duplicates in parent1
-    for slice_ind, val in enumerate(slice2):
-        try:
-            par_ind = parent1.index(val)
-            parent1[par_ind] = slice1[slice_ind]
-        except:
-            # Both slices contain value
-            pass
+    child2_dupe_map = {}
+    for index, city in enumerate(slice1):
+        if city not in slice2_map:
+            target_city = slice1[index]
+            while target_city in slice1_map:
+                index = slice1_map[target_city]
+                target_city = slice2[index]
+            child2_dupe_map[city] = target_city
 
-    parent1[start:stop] = slice2
-    parent2[start:stop] = slice1
+    child1 = [slice2[index - start]
+              if index >= start and index < stop  # insert slice
+              else child1_dupe_map[city]
+              if city in child1_dupe_map  # get rid of duplicates
+              else city  # otherwise use parent tour
+              for index, city
+              in enumerate(p1_tour)]
 
-    # Mutate?
+    child2 = [slice1[index - start]
+              if index >= start and index < stop  # insert slice
+              else child2_dupe_map[city]
+              if city in child2_dupe_map  # get rid of duplicates
+              else city  # otherwise use parent tour
+              for index, city
+              in enumerate(p2_tour)]
 
-    # Now children
-    child1 = Tour(parent1)
-    child2 = Tour(parent2)
-
+    # Mutate
     child1 = mutate(child1)
     child2 = mutate(child2)
+
     return child1, child2
 
 
@@ -524,34 +372,37 @@ def get_two_rand_ints(max_value):
     return low, high
 
 
-def mutate(child):
-    alpha = 0.001
+def mutate(tour, alpha=None):
+    if alpha is None:
+        alpha = 0.01
 
     if random.random() <= alpha:
         # Mutate
-        tour = child.get_tour()
         low, high = get_two_rand_ints(len(tour) - 1)
 
         temp = tour[low]
         tour[low] = tour[high]
         tour[high] = temp
 
-        return Tour(tour)
-    else:
-        # No mutation
-        return child
+    return Tour(tour)
 
 
 def get_starting_population(cities, pop_size):
     start_tour = greedy_algorithm(cities)
+    start_tour._tour.pop()
+    start_tour.update_distance()
     start_tour_list = start_tour.get_tour()
-    tour_list_len = len(start_tour_list)
 
+    tour_list_len = len(start_tour_list)
     start_pop = [Tour(random.sample(start_tour_list, tour_list_len))
                  for _
-                 in xrange(0, pop_size - 1)]
+                 in xrange(0, pop_size)]
 
-    start_pop.append(start_tour)
+    # start_pop = [mutate(start_tour_list, 1)
+    #              for _
+    #              in xrange(0, pop_size - 1)]
+
+    # start_pop.insert(0, start_tour)
 
     return start_pop
 
@@ -569,4 +420,5 @@ def get_min_tour(tours):
     return min_tour
 
 if __name__ == "__main__":
+    # cProfile.run('main()')
     main()
