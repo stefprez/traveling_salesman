@@ -237,13 +237,10 @@ def genetic_algorithm(cities, pop_size, num_cities=119):
                                                                   min_dist)
             start_time = time.time()
 
-        # random.shuffle(population)
         new_population = []
-        choices = get_choices(population)
-        weight_total = sum(weight for choice, weight in choices)
 
         for index in xrange(0, len(population), 2):
-            tour1, tour2 = get_parents_for_breeding(choices, weight_total)
+            tour1, tour2 = get_parents_for_breeding(population)
 
             # Mutate pairs and generate new children
             child1, child2 = mutate_and_breed(tour1, tour2)
@@ -256,42 +253,11 @@ def genetic_algorithm(cities, pop_size, num_cities=119):
         generation += 1
 
 
-def get_parents_for_breeding(choices, total):
-    # O(n)
-    r1 = random.uniform(0, total)
-    r2 = random.uniform(0, total)
-    upto1 = 0
-    upto2 = 0
-
-    p1 = None
-    p2 = None
-    counter = 0
-    while p1 == p2 and counter < len(choices):
-        for choice, weight in choices:
-            upto1 += weight
-            upto2 += weight
-            if p1 is None and upto1 >= r1:
-                p1 = choice
-                if p2:
-                    break
-            elif p2 is None and upto2 >= r2:
-                p2 = choice
-                if p1:
-                    break
-        counter += 1
+def get_parents_for_breeding(population):
+    p1 = get_min_tour(population)
+    p2 = population[random.randint(1, len(population) - 1)]
 
     return p1, p2
-    # assert False, "Shouldn't get here."
-
-
-def get_choices(population):
-    # O(n)
-    choices = []
-    for parent in population:
-        weight = fitness(parent)
-        choice = (parent, weight)
-        choices.append(choice)
-    return choices
 
 
 def fitness(tour):
