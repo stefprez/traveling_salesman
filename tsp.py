@@ -31,11 +31,13 @@ def main():
     # uniform_cost_tour.save_tour("uniform_{0}.pdf".format(2))
     # uniform_cost_tour.print_tour()
 
-    genectic_tour = genetic_algorithm(cities, 100)
-    genectic_tour.plot_tour()
+#     genectic_tour = genetic_algorithm(cities, 100)
+#     genectic_tour.plot_tour()
     # genectic_tour.save_tour("genetic_algorithm.pdf")
-    genectic_tour.print_tour()
+#     genectic_tour.print_tour()
 
+
+    simulated_annealing_tour = simulated_annealing(cities)
 
 def loadInCities():
     cities = []
@@ -280,69 +282,7 @@ def mutate_and_breed(parent1, parent2):
     # Get random start and stop values
     start, stop = get_two_rand_ints(tour_len)
 
-    # # SPIKE START
-    # child1_dupe_map = {}
-    # child2_dupe_map = {}
-
-    # for index in xrange(start, stop):
-    #     p1_city = p1_tour[index]
-    #     p2_city = p2_tour[index]
-
-    #     # Swap
-    #     p1_tour[index] = p2_city
-    #     p2_tour[index] = p1_city
-
-    #     child1_dupe_map[p2_city] = p1_city
-    #     child2_dupe_map[p1_city] = p2_city
-
-    # # Remove duplicates from first section
-    # for index in xrange(0, start):
-    #     # P1
-    #     p1_city = p1_tour[index]
-
-    #     while p1_city in child1_dupe_map:
-    #         p1_city = child1_dupe_map[p1_city]
-
-    #     p1_tour[index] = p1_city
-
-    #     # P2
-    #     p2_city = p2_tour[index]
-
-    #     while p2_city in child2_dupe_map:
-    #         p2_city = child2_dupe_map[p2_city]
-
-    #     p2_tour[index] = p2_city
-
-    # # Remove duplicates from second section
-    # for index in xrange(stop, tour_len):
-    #     # P1
-    #     p1_city = p1_tour[index]
-
-    #     while p1_city in child1_dupe_map:
-    #         p1_city = child1_dupe_map[p1_city]
-
-    #     p1_tour[index] = p1_city
-
-    #     # P2
-    #     p2_city = p2_tour[index]
-
-    #     while p2_city in child2_dupe_map:
-    #         p2_city = child2_dupe_map[p2_city]
-
-    #     p2_tour[index] = p2_city
-
-    # # Mutate
-    # child1 = mutate(p1_tour)
-    # child2 = mutate(p2_tour)
-
-    # # if not child1.is_valid():
-    # #     print "INVALID"
-    # #     sys.exit(1)
-    # # elif not child2.is_valid():
-    # #     print "INVALID"
-    # #     sys.exit(1)
-
-    # # SPIKE STOP
+   
 
     # Get slices
     slice1 = p1_tour[start:stop]
@@ -456,6 +396,68 @@ def get_min_tour(tours):
             min_tour_distance = tour_dist
 
     return min_tour
+
+def get_random_tour(cities):
+    seed_tour = greedy_algorithm(cities)
+    seed_tour._tour.pop()
+    seed_tour.update_distance()
+    seed_tour_list = seed_tour._tour
+    
+    tour_list_len = len(seed_tour_list)
+    
+    return Tour(random.sample(seed_tour_list, tour_list_len))
+
+def simulated_annealing(cities):
+    start_time = time.time()
+    tour = get_random_tour(cities)
+    tour_list = tour._tour
+    print tour._distance
+    
+    finished = False
+    swaps = 0
+    while not finished:
+        
+        for _ in xrange(0, 20000):
+#             if count % 500 == 0:
+#                 print "Count: ", count
+            finished = True
+            swapped, new_tour = two_opt_swap(tour)
+            if swapped:
+                tour = new_tour
+                swaps += 1
+                finished = False
+                break
+    finished_tour = tour
+    elapsed = time.time() - start_time
+    print "Time: ", elapsed
+    print swaps
+    print finished_tour._distance
+    finished_tour.plot_tour()
+
+def two_opt_swap(tour):
+    start, stop = get_two_rand_ints(len(tour) - 1)
+    start_dist = tour._distance
+    working_tour = [city for city in tour._tour]
+
+    while start < stop:
+        temp = working_tour[start]
+        working_tour[start] = working_tour[stop]
+        working_tour[stop] = temp
+        start += 1
+        stop -= 1
+        
+    end_tour = Tour(working_tour)
+    end_dist = end_tour._distance
+    
+    if end_dist < start_dist:
+#         print "End: ", end_dist
+#         print "Start: ", start_dist
+        short_tour = end_tour
+        swapped = True
+    else:
+        short_tour = tour
+        swapped = False
+    return swapped, short_tour
 
 if __name__ == "__main__":
     # cProfile.run('main()')
