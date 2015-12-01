@@ -145,6 +145,8 @@ class Tour(object):
         for city in self._tour:
             cities_x.append(city.x)
             cities_y.append(city.y)
+        cities_x.append(self._tour[0].x)
+        cities_y.append(self._tour[0].y)
         plot.axis([-5, 105, -5, 105])
         plot.title("Tour Distance: {0}".format(self.get_distance()))
         plot.plot(cities_x, cities_y, marker="o")
@@ -417,7 +419,7 @@ def simulated_annealing(cities):
     swaps = 0
     while not finished:
         
-        for _ in xrange(0, 20000):
+        for _ in xrange(0, 15000):
 #             if count % 500 == 0:
 #                 print "Count: ", count
             finished = True
