@@ -36,8 +36,8 @@ def main():
     # genectic_tour.save_tour("genetic_algorithm.pdf")
 #     genectic_tour.print_tour()
 
-
     simulated_annealing_tour = simulated_annealing(cities)
+
 
 def loadInCities():
     cities = []
@@ -111,7 +111,8 @@ class Tour(object):
                 city2 = tour[index + 1]
                 tot_dist += Tour.distance_between_cities(city1, city2)
 
-            tot_dist += Tour.distance_between_cities(tour[0], tour[end_tour_index])
+            tot_dist += Tour.distance_between_cities(tour[0],
+                                                     tour[end_tour_index])
 
         self._distance = tot_dist
 
@@ -284,8 +285,6 @@ def mutate_and_breed(parent1, parent2):
     # Get random start and stop values
     start, stop = get_two_rand_ints(tour_len)
 
-   
-
     # Get slices
     slice1 = p1_tour[start:stop]
     slice2 = p2_tour[start:stop]
@@ -399,29 +398,31 @@ def get_min_tour(tours):
 
     return min_tour
 
+
 def get_random_tour(cities):
     seed_tour = greedy_algorithm(cities)
     seed_tour._tour.pop()
     seed_tour.update_distance()
     seed_tour_list = seed_tour._tour
-    
+
     tour_list_len = len(seed_tour_list)
-    
+
     return Tour(random.sample(seed_tour_list, tour_list_len))
+
 
 def simulated_annealing(cities):
     start_time = time.time()
     tour = get_random_tour(cities)
     tour_list = tour._tour
     print tour._distance
-    
+
     finished = False
     swaps = 0
     while not finished:
-        
+
         for _ in xrange(0, 15000):
-#             if count % 500 == 0:
-#                 print "Count: ", count
+            # if count % 500 == 0:
+            # print "Count: ", count
             finished = True
             swapped, new_tour = two_opt_swap(tour)
             if swapped:
@@ -436,6 +437,7 @@ def simulated_annealing(cities):
     print finished_tour._distance
     finished_tour.plot_tour()
 
+
 def two_opt_swap(tour):
     start, stop = get_two_rand_ints(len(tour) - 1)
     start_dist = tour._distance
@@ -447,13 +449,13 @@ def two_opt_swap(tour):
         working_tour[stop] = temp
         start += 1
         stop -= 1
-        
+
     end_tour = Tour(working_tour)
     end_dist = end_tour._distance
-    
+
     if end_dist < start_dist:
-#         print "End: ", end_dist
-#         print "Start: ", start_dist
+        # print "End: ", end_dist
+        # print "Start: ", start_dist
         short_tour = end_tour
         swapped = True
     else:
