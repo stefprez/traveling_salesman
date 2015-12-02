@@ -12,6 +12,7 @@ import random
 import pprint
 import cProfile
 import numpy.linalg as linalg
+import threading
 
 sqrt = math.sqrt
 
@@ -137,8 +138,9 @@ class Tour(object):
         return string
 
     def plot_tour(self):
+        plot.close()
         self._plot_setup()
-        plot.show()
+        plot.show(block=False)
 
     def _plot_setup(self):
         cities_x = []
@@ -410,38 +412,64 @@ def get_random_tour(cities):
     return Tour(random.sample(seed_tour_list, tour_list_len))
 
 
+def plot_timer():
+    print "Distance: ", tour._distance
+    print "Temperature: ", temperature
+    print
+    global t
+    t = threading.Timer(5, plot_timer)
+    t.start()
+
+temperature = 10.0
+tour = None
+t = None
+
+
 def simulated_annealing(cities):
     start_time = time.time()
+    global tour
     tour = get_random_tour(cities)
     tour_list = tour._tour
-    print tour._distance
+    global temperature
+    T_min = .03
+    alpha = .99999
+    print "Starting distance: ", tour._distance
+    old_plot_dist = tour._distance
+    plotted = False
 
-    finished = False
     swaps = 0
-    while not finished:
+    counter = 0
 
-        for _ in xrange(0, 15000):
-            # if count % 500 == 0:
-            # print "Count: ", count
-            finished = True
-            swapped, new_tour = two_opt_swap(tour)
-            if swapped:
-                tour = new_tour
-                swaps += 1
-                finished = False
-                break
+    plot_timer()
+    while temperature > T_min:
+        counter += 1
+        swapped, new_tour = two_opt_swap(tour)
+
+        if swapped:
+            tour = new_tour
+            swaps += 1
+
+        # Temperature update
+        if counter % 100 == 0:
+            temperature *= alpha
+
     finished_tour = tour
     elapsed = time.time() - start_time
     print "Time: ", elapsed
-    print swaps
-    print finished_tour._distance
+    print "# of Swaps: ", swaps
+    print "Finished Distance: ", finished_tour._distance
+    t.cancel()
     finished_tour.plot_tour()
 
 
-def two_opt_swap(tour):
-    start, stop = get_two_rand_ints(len(tour) - 1)
-    start_dist = tour._distance
-    working_tour = [city for city in tour._tour]
+def acceptance_probability(old_dist, new_dist):
+    return math.exp((old_dist - new_dist) / temperature)
+
+
+def two_opt_swap(old_tour):
+    start, stop = get_two_rand_ints(len(old_tour) - 1)
+    old_dist = old_tour._distance
+    working_tour = [city for city in old_tour._tour]
 
     while start < stop:
         temp = working_tour[start]
@@ -450,19 +478,22 @@ def two_opt_swap(tour):
         start += 1
         stop -= 1
 
-    end_tour = Tour(working_tour)
-    end_dist = end_tour._distance
+    new_tour = Tour(working_tour)
+    new_dist = new_tour._distance
 
-    if end_dist < start_dist:
-        # print "End: ", end_dist
-        # print "Start: ", start_dist
-        short_tour = end_tour
+    ap = acceptance_probability(old_dist,
+                                new_dist)
+
+    if ap > random.random():
+        short_tour = new_tour
         swapped = True
     else:
-        short_tour = tour
+        short_tour = old_tour
         swapped = False
     return swapped, short_tour
+
 
 if __name__ == "__main__":
     # cProfile.run('main()')
     main()
+    plot.show()
